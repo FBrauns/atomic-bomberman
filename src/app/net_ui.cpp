@@ -148,10 +148,12 @@ NetUi::~NetUi() { close(); }
 
 std::string NetUi::playerName() const {
     std::string name = net::cleanText(cfg_.netName, net::kMaxName);
+#ifndef __EMSCRIPTEN__  // a page has no user name (Emscripten makes up "web_user")
     if (name.empty()) {
         for (const char* var : {"USER", "USERNAME"})
             if (const char* value = std::getenv(var); name.empty() && value != nullptr) name = net::cleanText(value, net::kMaxName);
     }
+#endif
     return name.empty() ? "Player" : name;
 }
 

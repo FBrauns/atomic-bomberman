@@ -1565,6 +1565,10 @@ void Server::update(std::uint64_t nowMs) {
         routerNotice_ = r.ok ? "The router lets this game through" + (r.externalIp.empty() ? std::string() : ": others can join at " + r.externalIp + ":" + std::to_string(listener_.port()))
                              : "The router did not open the port by itself (" + r.message + "). Players outside your network need port " +
                                    std::to_string(listener_.port()) + " (TCP and UDP) forwarded by hand.";
+#ifdef __EMSCRIPTEN__
+        // In a browser page there is no port to open: players join with the room code.
+        routerNotice_ = "Friends join with the room code or the invite link shown on the page.";
+#endif
         say(routerNotice_);
     }
     if (now_ - pingSentAt_ >= 1000) {

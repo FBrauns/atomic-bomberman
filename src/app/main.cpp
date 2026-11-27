@@ -569,6 +569,10 @@ int runGame(int argc, char** argv, bool& again) {
         settingsPath = std::string(pref) + "options.ini";
         userSchemesDir = std::string(pref) + "schemes";
         SDL_free(pref);
+#ifdef __EMSCRIPTEN__
+        // Files are kept next to this folder ("schemes/../server.key"): it must exist.
+        SDL_CreateDirectory(userSchemesDir.c_str());
+#endif
     }
     const bool useSettings = opt.frames <= 0 && !opt.demo && opt.script.empty() && !settingsPath.empty();
     if (useSettings && cfg.load(settingsPath)) std::fprintf(stderr, "INFO  Settings: %s\n", settingsPath.c_str());
