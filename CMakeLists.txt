@@ -12,13 +12,20 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 # 32-bit builds. On x86, floating point in the SSE registers as on 64-bit, not in the x87's
 # wider ones (MSVC does so already). On Linux, a 64-bit time (past 2038) and 64-bit file
 # sizes; set for everything built here, the fetched libraries too, so that they agree.
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND NOT MSVC)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND NOT MSVC AND NOT EMSCRIPTEN)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86|x86_64|AMD64)$")
         add_compile_options(-msse2 -mfpmath=sse)
     endif()
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         add_compile_definitions(_FILE_OFFSET_BITS=64 _TIME_BITS=64)
     endif()
+endif()
+
+# Browser build (Emscripten): exceptions are caught by the network code, so they are
+# turned on for everything, the fetched libraries too.
+if(EMSCRIPTEN)
+    add_compile_options(-fexceptions)
+    add_link_options(-fexceptions)
 endif()
 
 # Warning flags for this project's own targets (not for a fetched SDL3).
@@ -227,6 +234,25 @@ if(SDL3_FOUND)
             MACOSX_BUNDLE_ICON_FILE "${AB_ICON_NAME}"
             MACOSX_BUNDLE_COPYRIGHT "GPL-3.0-or-later. A new program: it holds nothing of the original game.")
         install(TARGETS atomic BUNDLE DESTINATION .)
+    elseif(EMSCRIPTEN)
+        # Browser: index.html + index.js + index.wasm, WebGL 2, the per-user folder in
+        # IndexedDB, and ASYNCIFY so that the game's own frame loop can wait for the browser.
+        add_executable(atomic ${AB_APP_SOURCES})
+        set(AB_APP atomic)
+        set_target_properties(atomic PROPERTIES OUTPUT_NAME index SUFFIX ".html")
+        target_link_options(atomic PRIVATE
+            -sASYNCIFY=1
+            -sASYNCIFY_STACK_SIZE=1048576
+            -sSTACK_SIZE=4MB
+            -sALLOW_MEMORY_GROWTH=1
+            -sINITIAL_MEMORY=128MB
+            -sMIN_WEBGL_VERSION=2
+            -sMAX_WEBGL_VERSION=2
+            -sENVIRONMENT=web
+            -lidbfs.js
+            "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']"
+            --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+        set_property(TARGET atomic APPEND PROPERTY LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
     else()
         add_executable(atomic ${AB_APP_SOURCES})
         set(AB_APP atomic)

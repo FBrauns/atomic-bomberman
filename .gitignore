@@ -28,3 +28,7 @@ __pycache__/
 # The online service (deploy/): its settings, keys and data.
 /deploy/.env
 /deploy/data/
+
+# Browser builds (Emscripten)
+/build-web/
+/build-dbg/
