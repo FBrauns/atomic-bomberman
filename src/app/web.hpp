@@ -31,9 +31,14 @@ EM_ASYNC_JS(void, ab_web_mount_user_storage, (), {
 });
 
 // Ends a drawn frame: the browser shows it and does its own work; the game goes on
-// at the next animation frame (paused while the tab is hidden).
+// at the next animation frame.
+// While the tab is hidden the browser stops animation frames; a timer keeps the game (and a
+// hosted network game with it) running. Pages that play sound are not slowed down by Chrome.
 EM_ASYNC_JS(void, ab_web_wait_frame, (), {
-    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise((resolve) => {
+        if (document.hidden) setTimeout(resolve, 16);
+        else requestAnimationFrame(() => resolve());
+    });
 });
 
 EM_JS(void, ab_web_save_user_storage, (), {

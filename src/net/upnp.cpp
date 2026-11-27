@@ -196,6 +196,12 @@ void PortMapper::start(std::uint16_t port, const std::string& description) {
     started_ = true;
     finished_ = false;
     port_ = port;
+#ifdef __EMSCRIPTEN__
+    // No threads and no router in a browser page: asked at once (the answer is "nobody there").
+    result_ = upnpMapPort(realUpnpTransport(), port, description);
+    finished_ = true;
+    return;
+#endif
     thread_ = std::thread([this, port, description] {
         const UpnpResult r = upnpMapPort(realUpnpTransport(), port, description);
         {

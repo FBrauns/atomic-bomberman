@@ -70,7 +70,12 @@ endif()
 # Network play: sockets, protocol, server and client. No SDL: the dedicated
 # server is built from this alone.
 find_package(Threads REQUIRED)
-add_library(ab_net src/net/socket.cpp src/net/protocol.cpp src/net/server.cpp src/net/client.cpp src/net/upnp.cpp src/net/crypto.cpp src/net/link.cpp src/net/snapshot.cpp src/net/record.cpp)
+if(EMSCRIPTEN)
+    set(AB_SOCKET_SOURCE src/net/socket_web.cpp)  # the browser's virtual network (web/net.js)
+else()
+    set(AB_SOCKET_SOURCE src/net/socket.cpp)
+endif()
+add_library(ab_net ${AB_SOCKET_SOURCE} src/net/protocol.cpp src/net/server.cpp src/net/client.cpp src/net/upnp.cpp src/net/crypto.cpp src/net/link.cpp src/net/snapshot.cpp src/net/record.cpp)
 target_link_libraries(ab_net PUBLIC ab_game ab_resources Threads::Threads)
 if(WIN32)
     target_link_libraries(ab_net PUBLIC ws2_32)
@@ -251,8 +256,13 @@ if(SDL3_FOUND)
             -sENVIRONMENT=web
             -lidbfs.js
             "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']"
-            --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
-        set_property(TARGET atomic APPEND PROPERTY LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+            --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html
+            --pre-js ${CMAKE_CURRENT_SOURCE_DIR}/web/net.js)
+        set_property(TARGET atomic APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html;${CMAKE_CURRENT_SOURCE_DIR}/web/net.js")
+        # PeerJS (MIT), served next to the page.
+        add_custom_command(TARGET atomic POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/web/peerjs.min.js ${CMAKE_CURRENT_BINARY_DIR}/peerjs.min.js
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/web/peerjs.LICENSE ${CMAKE_CURRENT_BINARY_DIR}/peerjs.LICENSE)
     else()
         add_executable(atomic ${AB_APP_SOURCES})
         set(AB_APP atomic)

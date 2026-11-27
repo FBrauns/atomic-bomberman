@@ -39,7 +39,7 @@ jobs:
       - name: Collect the page
         run: |
           mkdir -p site
-          cp build-web/index.html build-web/index.js build-web/index.wasm site/
+          cp build-web/index.html build-web/index.js build-web/index.wasm build-web/peerjs.min.js build-web/peerjs.LICENSE site/
           touch site/.nojekyll
           ls -la site
 
