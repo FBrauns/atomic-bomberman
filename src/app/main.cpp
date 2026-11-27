@@ -2,6 +2,7 @@
 // the gameplay core (src/game) knows nothing about SDL or OpenGL.
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include "app/web.hpp"
 
 #include "rendering/gl.hpp"
 
@@ -70,9 +71,12 @@ struct Options {
     int attractSeconds = -1;  // --attract-seconds N: idle time on the menu before the demo (default: value 92)
     bool debug = false;       // --debug: the original's debug keys (it used the KWD environment variable)
     bool noIntro = false;     // --no-intro: go straight to the main menu
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
     bool gles = true;         // OpenGL ES 3.0 (always on a phone)
     bool touch = true;        // on-screen controls
+#elif defined(__EMSCRIPTEN__)
+    bool gles = true;                      // WebGL 2 (OpenGL ES 3.0)
+    bool touch = ab::web::touchScreen();   // on-screen controls on phones and tablets
 #else
     bool gles = false;        // --gles: OpenGL ES 3.0 instead of OpenGL 3.3
     bool touch = false;       // --touch: on-screen controls, worked with the mouse
@@ -505,7 +509,12 @@ int runGame(int argc, char** argv, bool& again) {
     // Saved choice (Options, Graphics And Sound): the free set although original data is there.
     if (earlyLoaded && early.freeAssets) opt.freeAssets = true;
     // Unattended runs show these screens only when asked to with --import-folder.
+#ifdef __EMSCRIPTEN__
+    // The browser cannot open a folder of the disc yet: the free asset set only.
+    if (false) {
+#else
     if ((!opt.importFolder.empty() || !unattended) && requested.empty() && !opt.freeAssets && ab::ensureFreeAssets(freeDir, true)) {
+#endif
         ab::ImportScreens screens;
         screens.toldFile = userFile("import-told.txt");
         screens.otherData = !findGameDir("").empty();
@@ -2564,6 +2573,9 @@ int runGame(int argc, char** argv, bool& again) {
                 running = false;
             }
             SDL_GL_SwapWindow(window);
+#ifdef __EMSCRIPTEN__
+            ab::web::waitFrame();
+#endif
         }
         if (farewell && sound && opt.frames <= 0) {
             // As the original's quit routine (0x412987): the music stops, one of the
@@ -2592,9 +2604,18 @@ int runGame(int argc, char** argv, bool& again) {
 }
 
 int main(int argc, char** argv) {
+#ifdef __EMSCRIPTEN__
+    ab::web::mountUserStorage();
+#endif
     for (;;) {
         bool again = false;
         const int result = runGame(argc, argv, again);
-        if (!again) return result;
+        if (!again) {
+#ifdef __EMSCRIPTEN__
+            ab::web::saveUserStorage();
+            ab::web::quit();
+#endif
+            return result;
+        }
     }
 }
